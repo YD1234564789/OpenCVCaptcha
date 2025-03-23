@@ -38,14 +38,7 @@
 git clone https://github.com/YD1234564789/OpenCVCaptcha.git
 cd OpenCVCaptcha
 ```
-
-### 2. 安裝依賴（若有後端）
-本專案目前無需額外安裝後端，若未來加入後端，可使用以下方式安裝依賴：
-```sh
-npm install
-```
-
-### 3. 運行專案
+### 2. 運行專案
 直接在瀏覽器打開 `identification.html` 、`splitLetter.html`即可。
 
 ## 主要技術

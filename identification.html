@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>驗證碼識別系統</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: #333;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .section {
+      flex: 1;
+      min-width: 300px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      background-color: #f9f9f9;
+    }
+
+    .image-container {
+      display: inline-block;
+      margin: 10px;
+      text-align: center;
+    }
+
+    img {
+      max-width: 100%;
+      border: 1px solid #ccc;
+      margin-bottom: 5px;
+    }
+
+    .parameter-control {
+      margin-bottom: 10px;
+    }
+
+    .parameter-control input {
+      width: 100%;
+    }
+
+    #processButton,
+    #resetButton {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+
+    #processButton:hover,
+    #resetButton:hover {
+      background-color: #45a049;
+    }
+
+    #processButton:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .stages {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .stage {
+      flex: 1;
+      min-width: 200px;
+      text-align: center;
+    }
+
+    .stage img {
+      max-height: 150px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>驗證碼識別系統</h1>
+  <p id="loadingStatus">等待OpenCV.js加載...</p>
+
+  <div class="container">
+    <div class="section">
+      <h2>輸入</h2>
+      <input type="file" id="fileInput" accept=".png, .jpg, .jpeg">
+      <button id="processButton" disabled>處理圖像</button>
+
+      <h3>參數設置</h3>
+      <div id="parameterControls"></div>
+    </div>
+
+    <div class="section">
+      <h2>原始圖像</h2>
+      <img id="originalImage" alt="原始圖像" style="max-height: 200px;">
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>處理階段</h2>
+    <div class="stages">
+      <div class="stage">
+        <h3>腐蝕操作</h3>
+        <img id="erosionImage" alt="腐蝕結果">
+      </div>
+      <div class="stage">
+        <h3>高斯模糊</h3>
+        <img id="blurImage" alt="模糊結果">
+      </div>
+      <div class="stage">
+        <h3>Canny邊緣檢測</h3>
+        <img id="cannyImage" alt="邊緣檢測結果">
+      </div>
+      <div class="stage">
+        <h3>膨脹操作</h3>
+        <img id="dilationImage" alt="膨脹結果">
+      </div>
+      <div class="stage">
+        <h3>檢測到的輪廓</h3>
+        <img id="contoursImage" alt="輪廓結果">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>提取的字符</h2>
+    <div id="characters"></div>
+  </div>
+
+  <div class="section">
+    <h2>識別結果</h2>
+    <div id="results"></div>
+  </div>
+
+  <!-- 引入OpenCV.js -->
+  <script async src="opencv.js" onload="onOpenCvReady()" type="text/javascript"></script>
+
+  <!-- 引入主腳本 -->
+  <script src="index.js"></script>
+</body>
+
+</html>

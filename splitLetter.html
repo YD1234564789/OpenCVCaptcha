@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>字母分割工具 - 特殊字母優化版</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+
+    .container {
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .letter-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid #eee;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: white;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      margin-bottom: 5px;
+    }
+
+    button,
+    .download-btn {
+      padding: 8px 12px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 5px;
+      text-decoration: none;
+      font-size: 14px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    button:hover,
+    .download-btn:hover {
+      background-color: #3367d6;
+    }
+
+    .control-panel {
+      background-color: #f1f3f4;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .slider-container {
+      margin-bottom: 15px;
+    }
+
+    .slider-container label {
+      display: inline-block;
+      width: 200px;
+      font-weight: 500;
+    }
+
+    .toggle-section {
+      cursor: pointer;
+      color: #4285f4;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .download-all-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background-color: #0f9d58;
+      font-weight: bold;
+    }
+
+    .download-all-btn:hover {
+      background-color: #0b8043;
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: #202124;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>字母分割工具 - 特殊字母優化版</h1>
+
+  <div class="container">
+    <h2>步驟 1: 上傳包含a-z字母的PNG圖像</h2>
+    <p>選擇一個包含所有26個英文字母(a-z)的PNG圖像。字母應該在圖像中清晰可見。</p>
+    <input type="file" id="alphabetFileInput" accept="image/png, image/jpeg" />
+  </div>
+
+  <div class="container control-panel">
+    <h2>設定參數</h2>
+    <p>調整這些參數以優化字母檢測效果（特別對有內輪廓的字母和分離筆畫的字母進行優化）：</p>
+
+    <div class="slider-container">
+      <label for="thresholdSlider">二值化閾值:</label>
+      <input type="range" id="thresholdSlider" min="0" max="255" value="127" step="1">
+      <span id="thresholdValue">127</span>
+    </div>
+
+    <div class="slider-container">
+      <label for="connectedComponentsCheckbox">使用連通元件分析:</label>
+      <input type="checkbox" id="connectedComponentsCheckbox" checked>
+      <span>（適用於處理分離筆畫的字母，如i和j）</span>
+    </div>
+
+    <div class="slider-container">
+      <label for="fillHolesCheckbox">填充內部空洞:</label>
+      <input type="checkbox" id="fillHolesCheckbox" checked>
+      <span>（適用於處理有內輪廓的字母，如a、b、d、e、g、o、p、q）</span>
+    </div>
+
+    <div class="slider-container">
+      <label for="gapDistanceSlider">連接間隙距離 (px):</label>
+      <input type="range" id="gapDistanceSlider" min="0" max="20" value="5" step="1">
+      <span id="gapDistanceValue">5</span>
+      <span>（用於連接分離筆畫，如i和j的點與主體）</span>
+    </div>
+
+    <div class="slider-container">
+      <label for="minWidthSlider">最小字母寬度 (px):</label>
+      <input type="range" id="minWidthSlider" min="5" max="50" value="10" step="1">
+      <span id="minWidthValue">10</span>
+    </div>
+
+    <div class="slider-container">
+      <label for="minHeightSlider">最小字母高度 (px):</label>
+      <input type="range" id="minHeightSlider" min="5" max="50" value="15" step="1">
+      <span id="minHeightValue">15</span>
+    </div>
+
+    <button id="processButton">處理並分割字母</button>
+  </div>
+
+  <div class="container">
+    <h2>步驟 2: 處理結果</h2>
+    <div id="originalImageContainer" style="margin-bottom: 15px; display: none;">
+      <h3>原始圖像:</h3>
+      <img id="originalImage" style="max-width: 100%; border: 1px solid #ccc;" />
+    </div>
+
+    <p class="toggle-section" onclick="toggleProcessingSteps()">顯示/隱藏處理步驟</p>
+
+    <div id="processingSteps" class="hidden">
+      <div id="grayImageContainer" style="margin-bottom: 15px; display: none;">
+        <h3>灰度圖像:</h3>
+        <canvas id="grayCanvas"></canvas>
+      </div>
+
+      <div id="binaryImageContainer" style="margin-bottom: 15px; display: none;">
+        <h3>二值化圖像:</h3>
+        <canvas id="binaryCanvas"></canvas>
+      </div>
+
+      <div id="processedImageContainer" style="margin-bottom: 15px; display: none;">
+        <h3>處理後圖像:</h3>
+        <canvas id="processedCanvas"></canvas>
+      </div>
+
+      <div id="componentsImageContainer" style="margin-bottom: 15px; display: none;">
+        <h3>連通元件標記:</h3>
+        <canvas id="componentsCanvas"></canvas>
+      </div>
+    </div>
+
+    <h3>提取的字母:</h3>
+    <div id="resultContainer" class="result-container"></div>
+
+    <button id="downloadAllButton" class="download-all-btn" style="display: none;">下載所有字母</button>
+  </div>
+
+  <div class="container">
+    <h2>步驟 3: 保存到alphabet資料夾</h2>
+    <p>點擊每個字母下方的"下載"按鈕，或使用"下載所有字母"按鈕來下載所有字母。然後將這些PNG文件放入您的"alphabet"資料夾中。</p>
+  </div>
+
+  <script src="opencv.js"></script>
+
+  <script>
+    // 狀態變數
+    let cvReady = true;
+
+    // 切換處理步驟顯示/隱藏
+    function toggleProcessingSteps () {
+      const processingSteps = document.getElementById('processingSteps');
+      processingSteps.classList.toggle('hidden');
+    }
+
+    // 更新滑動條值顯示
+    document.getElementById('thresholdSlider').addEventListener('input', function () {
+      document.getElementById('thresholdValue').textContent = this.value;
+    });
+    document.getElementById('gapDistanceSlider').addEventListener('input', function () {
+      document.getElementById('gapDistanceValue').textContent = this.value;
+    });
+    document.getElementById('minWidthSlider').addEventListener('input', function () {
+      document.getElementById('minWidthValue').textContent = this.value;
+    });
+    document.getElementById('minHeightSlider').addEventListener('input', function () {
+      document.getElementById('minHeightValue').textContent = this.value;
+    });
+
+    // OpenCV加載完成回調
+    
+
+    // 主處理按鈕事件
+    document.getElementById('processButton').addEventListener('click', function () {
+      if (!cvReady) {
+        alert('OpenCV.js 尚未準備就緒，請稍候...');
+        return;
+      }
+
+      const fileInput = document.getElementById('alphabetFileInput');
+      if (!fileInput.files.length) {
+        alert('請先選擇一個圖像文件');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          // 顯示原始圖像
+          document.getElementById('originalImage').src = e.target.result;
+          document.getElementById('originalImageContainer').style.display = 'block';
+
+          // 獲取參數
+          const params = {
+            threshold: parseInt(document.getElementById('thresholdSlider').value),
+            useConnectedComponents: document.getElementById('connectedComponentsCheckbox').checked,
+            fillHoles: document.getElementById('fillHolesCheckbox').checked,
+            gapDistance: parseInt(document.getElementById('gapDistanceSlider').value),
+            minWidth: parseInt(document.getElementById('minWidthSlider').value),
+            minHeight: parseInt(document.getElementById('minHeightSlider').value)
+          };
+
+          // 處理圖像
+          processAndExtractLetters(img, params);
+        };
+        img.src = e.target.result;
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    /**
+     * 處理圖像並提取字母
+     * @param {HTMLImageElement} image - 原始圖像
+     * @param {Object} params - 處理參數
+     */
+    function processAndExtractLetters (image, params) {
+      console.log('開始處理圖像，參數:', params);
+
+      // 清除先前的結果
+      document.getElementById('resultContainer').innerHTML = '';
+
+      // 步驟1: 將圖像轉換為OpenCV Mat對象
+      let src = cv.imread(image);
+
+      // 步驟2: 轉換為灰度
+      let gray = new cv.Mat();
+      if (src.channels() === 4) {
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      } else if (src.channels() === 3) {
+        cv.cvtColor(src, gray, cv.COLOR_RGB2GRAY);
+      } else {
+        src.copyTo(gray);
+      }
+
+      // 顯示灰度圖像
+      cv.imshow('grayCanvas', gray);
+      document.getElementById('grayImageContainer').style.display = 'block';
+
+      // 步驟3: 二值化
+      let binary = new cv.Mat();
+      cv.threshold(gray, binary, params.threshold, 255, cv.THRESH_BINARY_INV);
+
+      // 顯示二值化圖像
+      cv.imshow('binaryCanvas', binary);
+      document.getElementById('binaryImageContainer').style.display = 'block';
+
+      // 步驟4: 處理內部空洞和間隙
+      let processed = new cv.Mat();
+      binary.copyTo(processed);
+
+      // 4.1 處理內部空洞 (適用於a,b,d,e,g,o,p,q等)
+      if (params.fillHoles) {
+        // 創建一個足夠大的結構元素來填充字母內的孔洞，但不至於填充字母間的間隙
+        let kernelSize = Math.max(3, Math.floor(params.minWidth / 10));
+        let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(kernelSize, kernelSize));
+
+        // 使用閉運算來填充小孔洞
+        cv.morphologyEx(processed, processed, cv.MORPH_CLOSE, kernel);
+        kernel.delete();
+      }
+
+      // 4.2 處理分離筆畫 (適用於i,j等)
+      if (params.gapDistance > 0) {
+        let dilateKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(params.gapDistance, params.gapDistance));
+        cv.dilate(processed, processed, dilateKernel);
+        dilateKernel.delete();
+      }
+
+      // 顯示處理後的圖像
+      cv.imshow('processedCanvas', processed);
+      document.getElementById('processedImageContainer').style.display = 'block';
+
+      // 步驟5: 使用連通元件分析或輪廓檢測來找到字母
+      if (params.useConnectedComponents) {
+        // 5.1 使用連通元件分析
+        extractLettersUsingConnectedComponents(processed, binary, params);
+      } else {
+        // 5.2 使用輪廓檢測
+        extractLettersUsingContours(processed, binary, params);
+      }
+
+      // 釋放資源
+      src.delete();
+      gray.delete();
+      binary.delete();
+      processed.delete();
+    }
+
+    /**
+     * 使用連通元件分析提取字母
+     * @param {cv.Mat} processed - 處理後的圖像
+     * @param {cv.Mat} original - 原始二值化圖像
+     * @param {Object} params - 處理參數
+     */
+    function extractLettersUsingConnectedComponents (processed, original, params) {
+      // 連通元件分析
+      let labels = new cv.Mat();
+      let stats = new cv.Mat();
+      let centroids = new cv.Mat();
+
+      let numLabels = cv.connectedComponentsWithStats(processed, labels, stats, centroids);
+      console.log(`找到 ${numLabels - 1} 個連通元件`); // 減去背景
+
+      // 創建彩色標籤圖像以可視化連通元件
+      let colorLabels = new cv.Mat(labels.rows, labels.cols, cv.CV_8UC3);
+
+      // 為每個標籤分配隨機顏色
+      for (let i = 0; i < labels.rows; i++) {
+        for (let j = 0; j < labels.cols; j++) {
+          let label = labels.ucharPtr(i, j)[0];
+          if (label === 0) { // 背景
+            colorLabels.ucharPtr(i, j)[0] = 0;
+            colorLabels.ucharPtr(i, j)[1] = 0;
+            colorLabels.ucharPtr(i, j)[2] = 0;
+          } else {
+            // 生成一個基於標籤值的固定顏色
+            colorLabels.ucharPtr(i, j)[0] = (label * 43) % 256;
+            colorLabels.ucharPtr(i, j)[1] = (label * 127) % 256;
+            colorLabels.ucharPtr(i, j)[2] = (label * 193) % 256;
+          }
+        }
+      }
+
+      // 顯示標記的連通元件
+      cv.imshow('componentsCanvas', colorLabels);
+      document.getElementById('componentsImageContainer').style.display = 'block';
+
+      // 過濾連通元件並提取字母
+      let letterComponents = [];
+
+      // 從索引1開始（跳過背景）
+      for (let i = 1; i < numLabels; i++) {
+        let x = stats.intPtr(i, cv.CC_STAT_LEFT)[0];
+        let y = stats.intPtr(i, cv.CC_STAT_TOP)[0];
+        let width = stats.intPtr(i, cv.CC_STAT_WIDTH)[0];
+        let height = stats.intPtr(i, cv.CC_STAT_HEIGHT)[0];
+        let area = stats.intPtr(i, cv.CC_STAT_AREA)[0];
+
+        // 過濾掉太小的元件
+        if (width >= params.minWidth && height >= params.minHeight && area > (params.minWidth * params.minHeight * 0.5)) {
+          letterComponents.push({
+            label: i,
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            area: area,
+            centerX: centroids.doublePtr(i, 0)[0],
+            centerY: centroids.doublePtr(i, 1)[0]
+          });
+        }
+      }
+
+      // 如果找到的元件少於26個，可能需要降低過濾標準
+      if (letterComponents.length < 26) {
+        console.warn(`找到的元件數量(${letterComponents.length})少於26個，可能需要調整參數`);
+      }
+
+      // 按水平位置排序元件（假設字母是從左到右排列）
+      letterComponents.sort((a, b) => a.x - b.x);
+
+      // 提取並顯示每個字母
+      displayExtractedLetters(letterComponents, original, processed);
+
+      // 釋放資源
+      labels.delete();
+      stats.delete();
+      centroids.delete();
+      colorLabels.delete();
+    }
+
+    /**
+     * 使用輪廓檢測提取字母
+     * @param {cv.Mat} processed - 處理後的圖像
+     * @param {cv.Mat} original - 原始二值化圖像
+     * @param {Object} params - 處理參數
+     */
+    function extractLettersUsingContours (processed, original, params) {
+      // 複製圖像，因為findContours會修改輸入圖像
+      let processedCopy = processed.clone();
+
+      // 查找輪廓
+      let contours = new cv.MatVector();
+      let hierarchy = new cv.Mat();
+      cv.findContours(processedCopy, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+      console.log(`找到 ${contours.size()} 個輪廓`);
+
+      // 過濾輪廓並提取字母
+      let letterContours = [];
+
+      for (let i = 0; i < contours.size(); i++) {
+        const contour = contours.get(i);
+        const rect = cv.boundingRect(contour);
+        const area = cv.contourArea(contour);
+
+        // 過濾掉太小的輪廓
+        if (rect.width >= params.minWidth && rect.height >= params.minHeight && area > 0) {
+          letterContours.push({
+            index: i,
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            area: area
+          });
+        }
+      }
+
+      // 如果找到的輪廓少於26個，可能需要降低過濾標準
+      if (letterContours.length < 26) {
+        console.warn(`找到的輪廓數量(${letterContours.length})少於26個，可能需要調整參數`);
+      }
+
+      // 按水平位置排序輪廓（假設字母是從左到右排列）
+      letterContours.sort((a, b) => a.x - b.x);
+
+      // 提取並顯示每個字母
+      displayExtractedLetters(letterContours, original, processed);
+
+      // 釋放資源
+      processedCopy.delete();
+      contours.delete();
+      hierarchy.delete();
+    }
+
+    /**
+     * 顯示提取的字母
+     * @param {Array} components - 字母元件或輪廓
+     * @param {cv.Mat} originalBinary - 原始二值化圖像
+     * @param {cv.Mat} processed - 處理後的圖像
+     */
+    function displayExtractedLetters (components, originalBinary, processed) {
+      const resultContainer = document.getElementById('resultContainer');
+      const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+      const letterData = [];
+
+      // 限制處理的元件數量為26個（或更少，如果找不到那麼多）
+      const numToProcess = Math.min(components.length, 26);
+
+      // 處理找到的每個字母
+      for (let i = 0; i < numToProcess; i++) {
+        const comp = components[i];
+
+        // 為每個字母創建ROI（感興趣區域）
+        // 從原始二值化圖像中提取，而不是處理後的圖像，以保留細節
+        let padding = 2;
+        let roi_x = Math.max(0, comp.x - padding);
+        let roi_y = Math.max(0, comp.y - padding);
+        let roi_width = Math.min(originalBinary.cols - roi_x, comp.width + 2 * padding);
+        let roi_height = Math.min(originalBinary.rows - roi_y, comp.height + 2 * padding);
+
+        let roi = new cv.Mat();
+        let rect = new cv.Rect(roi_x, roi_y, roi_width, roi_height);
+
+        originalBinary.roi(rect).copyTo(roi);
+
+        // 調整大小為標準尺寸（50x50）
+        let resized = new cv.Mat();
+        cv.resize(roi, resized, new cv.Size(50, 50));
+
+        // 創建畫布並顯示
+        const canvas = document.createElement('canvas');
+        canvas.width = 50;
+        canvas.height = 50;
+        cv.imshow(canvas, resized);
+
+        // 獲取字母標籤
+        const letterIndex = i < alphabet.length ? i : i % alphabet.length;
+        const letterName = alphabet[letterIndex];
+
+        // 創建字母容器
+        const container = document.createElement('div');
+        container.className = 'letter-container';
+
+        // 添加畫布
+        container.appendChild(canvas);
+
+        // 添加字母標籤
+        const label = document.createElement('div');
+        label.textContent = letterName;
+        label.style.fontWeight = 'bold';
+        label.style.margin = '5px 0';
+        container.appendChild(label);
+
+        // 添加下載按鈕
+        const downloadBtn = document.createElement('a');
+        downloadBtn.textContent = '下載';
+        downloadBtn.className = 'download-btn';
+        downloadBtn.href = canvas.toDataURL('image/png');
+        downloadBtn.download = `${letterName}.png`;
+        container.appendChild(downloadBtn);
+
+        // 添加到結果容器
+        resultContainer.appendChild(container);
+
+        // 保存字母數據以備後續下載
+        letterData.push({
+          letter: letterName,
+          dataUrl: canvas.toDataURL('image/png')
+        });
+
+        // 釋放資源
+        roi.delete();
+        resized.delete();
+      }
+
+      // 如果成功提取了字母，顯示下載所有按鈕
+      if (letterData.length > 0) {
+        const downloadAllButton = document.getElementById('downloadAllButton');
+        downloadAllButton.style.display = 'block';
+
+        downloadAllButton.onclick = function () {
+          for (const data of letterData) {
+            const link = document.createElement('a');
+            link.href = data.dataUrl;
+            link.download = `${data.letter}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        };
+      }
+
+      console.log(`成功提取並顯示了 ${letterData.length} 個字母`);
+    }
+  </script>
+</body>
+
+</html>
